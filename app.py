@@ -313,7 +313,9 @@ def get_freight_industry_news():
         url = "https://news.google.com/rss/search?q=XPO+logistics+OR+Ryder+trucking+OR+Penske+freight+OR+JB+Hunt+OR+Schneider+trucking+OR+Werner+freight&hl=en-US&gl=US&ceid=US:en"
         feed = feedparser.parse(url)
         return feed.entries[:6]
-    except:
+    except (Exception) as e:
+        # Log error but return empty list to keep app running
+        print(f"Error fetching freight news: {e}")
         return []
 
 @st.cache_data(ttl=300)
@@ -323,7 +325,8 @@ def get_policy_news():
         url = "https://news.google.com/rss/search?q=freight+policy+OR+trucking+regulations+OR+USMCA+trade+OR+tariffs+logistics+OR+DOT+trucking+OR+FMCSA&hl=en-US&gl=US&ceid=US:en"
         feed = feedparser.parse(url)
         return feed.entries[:6]
-    except:
+    except (Exception) as e:
+        print(f"Error fetching policy news: {e}")
         return []
 
 @st.cache_data(ttl=300)
@@ -333,7 +336,8 @@ def get_ai_supply_chain_news():
         url = "https://news.google.com/rss/search?q=AI+supply+chain+OR+artificial+intelligence+logistics+OR+machine+learning+freight+OR+automation+warehouse&hl=en-US&gl=US&ceid=US:en"
         feed = feedparser.parse(url)
         return feed.entries[:6]
-    except:
+    except (Exception) as e:
+        print(f"Error fetching AI news: {e}")
         return []
 
 @st.cache_data(ttl=300)
@@ -343,7 +347,8 @@ def get_disruption_news():
         url = "https://news.google.com/rss/search?q=supply+chain+disruption+OR+port+congestion+OR+freight+delays+OR+shipping+crisis+OR+trucking+shortage&hl=en-US&gl=US&ceid=US:en"
         feed = feedparser.parse(url)
         return feed.entries[:6]
-    except:
+    except (Exception) as e:
+        print(f"Error fetching disruption news: {e}")
         return []
 
 @st.cache_data(ttl=300)
@@ -353,7 +358,8 @@ def get_southern_border_news():
         url = "https://news.google.com/rss/search?q=southern+border+OR+Mexico+trade+OR+border+crossing+OR+customs+delay+OR+USMCA+OR+Laredo+freight+OR+El+Paso+logistics&hl=en-US&gl=US&ceid=US:en"
         feed = feedparser.parse(url)
         return feed.entries[:6]
-    except:
+    except (Exception) as e:
+        print(f"Error fetching southern border news: {e}")
         return []
 
 @st.cache_data(ttl=300)
@@ -363,7 +369,8 @@ def get_border_weather_news():
         url = "https://news.google.com/rss/search?q=Texas+weather+OR+Mexico+storm+OR+hurricane+border+OR+Rio+Grande+Valley+weather+OR+border+flooding&hl=en-US&gl=US&ceid=US:en"
         feed = feedparser.parse(url)
         return feed.entries[:6]
-    except:
+    except (Exception) as e:
+        print(f"Error fetching border weather news: {e}")
         return []
 
 @st.cache_data(ttl=1800)
@@ -415,12 +422,10 @@ def initialize_gemini():
         # Try Streamlit secrets
         try:
             api_key = st.secrets.get("GEMINI_API_KEY")
-        except:
+        except (KeyError, FileNotFoundError, AttributeError):
             pass
     
-    if api_key:
-        return api_key
-    return None
+    return api_key
 
 def get_all_news_as_json():
     """Compile all news feeds into structured JSON for AI context"""
@@ -494,7 +499,12 @@ def get_all_news_as_json():
 
 def filter_relevant_news(query, news_data):
     """RAG: Filter news based on query keywords for efficient context"""
-    keywords = query.lower().split()
+    # Simple stop words to ignore
+    stop_words = {'the', 'is', 'at', 'which', 'on', 'a', 'an', 'and', 'or', 'but', 'in', 'with', 'to', 'for', 'of', 'as', 'by', 'this', 'that', 'it', 'from', 'are', 'was', 'be', 'been', 'will'}
+    
+    # Extract keywords from query, removing stop words and punctuation
+    words = query.lower().replace(',', ' ').replace('.', ' ').replace('?', ' ').replace('!', ' ').split()
+    keywords = [word for word in words if word not in stop_words and len(word) > 2]
     
     # Keywords to search for
     relevant_items = []
@@ -686,6 +696,10 @@ def show_ai_assistant_page():
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
     
+    # Initialize session state for suggested question clicks
+    if "suggested_question" not in st.session_state:
+        st.session_state.suggested_question = ""
+    
     # Suggested questions
     st.markdown("### 💡 Example Questions")
     
@@ -693,15 +707,15 @@ def show_ai_assistant_page():
     
     with col1:
         if st.button("🌪️ How will Texas storms affect border freight?", use_container_width=True):
-            st.session_state.user_input = "How will the current storms in Texas affect cross-border freight operations?"
+            st.session_state.suggested_question = "How will the current storms in Texas affect cross-border freight operations?"
         if st.button("📜 What are the latest policy changes?", use_container_width=True):
-            st.session_state.user_input = "What are the latest trade policy changes affecting the Southern Border?"
+            st.session_state.suggested_question = "What are the latest trade policy changes affecting the Southern Border?"
     
     with col2:
         if st.button("🚛 Border crossing delays today?", use_container_width=True):
-            st.session_state.user_input = "What are the current border crossing delays and their causes?"
+            st.session_state.suggested_question = "What are the current border crossing delays and their causes?"
         if st.button("⚠️ Identify supply chain bottlenecks", use_container_width=True):
-            st.session_state.user_input = "What are the major supply chain bottlenecks at the Southern Border right now?"
+            st.session_state.suggested_question = "What are the major supply chain bottlenecks at the Southern Border right now?"
     
     st.markdown("---")
     
@@ -726,12 +740,14 @@ def show_ai_assistant_page():
                 </div>
                 """, unsafe_allow_html=True)
     
-    # User input
+    # User input - use suggested question if available
+    default_value = st.session_state.suggested_question if st.session_state.suggested_question else ""
+    
     user_query = st.text_input(
         "Ask a question about supply chain intelligence:",
         key="user_input_text",
         placeholder="e.g., How will tariffs affect freight at Laredo?",
-        value=st.session_state.get("user_input", "")
+        value=default_value
     )
     
     col1, col2 = st.columns([3, 1])
@@ -742,7 +758,7 @@ def show_ai_assistant_page():
     with col2:
         if st.button("Clear Chat 🗑️", use_container_width=True):
             st.session_state.chat_history = []
-            st.session_state.user_input = ""
+            st.session_state.suggested_question = ""
             st.rerun()
     
     # Process query
@@ -769,8 +785,8 @@ def show_ai_assistant_page():
                     "content": ai_response
                 })
             
-            # Clear input and rerun to show new messages
-            st.session_state.user_input = ""
+            # Clear suggested question and rerun to show new messages
+            st.session_state.suggested_question = ""
             st.rerun()
     
     # Info box
