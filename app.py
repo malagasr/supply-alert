@@ -372,7 +372,7 @@ st.markdown("""
 
 # --- DATA FETCHING ---
 
-@st.cache_data(ttl=900)  # Cache for 15 minutes
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def get_freight_industry_news():
     """Fetch freight carrier & logistics news from high-quality sources"""
     feeds = [
@@ -401,7 +401,7 @@ def get_freight_industry_news():
         
     return news_items[:8]
 
-@st.cache_data(ttl=900)
+@st.cache_data(ttl=300)
 def get_policy_news():
     """Fetch government policy and trade news"""
     try:
@@ -412,17 +412,116 @@ def get_policy_news():
     except:
         return []
 
-@st.cache_data(ttl=900)
-def get_ai_supply_chain_news():
-    """Fetch AI in supply chain news"""
-    try:
-        url = "https://news.google.com/rss/search?q=AI+in+logistics+OR+supply+chain+automation+OR+warehouse+robotics+OR+generative+AI+freight&hl=en-US&gl=US&ceid=US:en"
-        feed = feedparser.parse(url)
-        return feed.entries[:6]
-    except:
-        return []
+def categorize_by_time_period(news_items):
+    """Categorize news into day/week/month trending based on publish date"""
+    from datetime import datetime, timedelta
 
-@st.cache_data(ttl=900)
+    now = datetime.now()
+    day_items = []
+    week_items = []
+    month_items = []
+
+    for item in news_items:
+        try:
+            if hasattr(item, 'published_parsed') and item.published_parsed:
+                pub_date = datetime(*item.published_parsed[:6])
+                age = now - pub_date
+
+                if age.days == 0:
+                    day_items.append(item)
+                elif age.days <= 7:
+                    week_items.append(item)
+                elif age.days <= 30:
+                    month_items.append(item)
+        except:
+            # If date parsing fails, add to week by default
+            week_items.append(item)
+
+    return day_items, week_items, month_items
+
+@st.cache_data(ttl=300)  # Cache for 5 minutes (faster updates)
+def get_ai_supply_chain_news():
+    """Fetch trending AI use cases, papers, reports, policies, and YouTube videos"""
+    news_items = []
+    seen_titles = set()
+
+    # Multiple targeted searches for comprehensive AI coverage
+    search_queries = [
+        # AI Use Cases
+        ("AI+use+case+logistics+supply+chain", "🔥"),
+        ("machine+learning+freight+optimization", "📈"),
+        ("generative+AI+warehouse+automation", "🚀"),
+
+        # Research & Reports
+        ("AI+supply+chain+research+paper", "📄"),
+        ("logistics+AI+industry+report", "📊"),
+        ("supply+chain+AI+white+paper", "📋"),
+
+        # Policies & Regulations
+        ("AI+regulation+logistics+policy", "⚖️"),
+        ("autonomous+trucking+policy", "🚛"),
+
+        # Emerging Tech
+        ("computer+vision+warehouse", "👁️"),
+        ("predictive+analytics+freight", "🔮"),
+    ]
+
+    for query, trend_emoji in search_queries[:6]:  # Limit to 6 queries
+        try:
+            url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
+            feed = feedparser.parse(url)
+
+            for entry in feed.entries[:3]:  # Take top 3 from each query
+                # Filter for quality - must contain AI/ML/tech keywords
+                title_lower = entry.title.lower()
+                relevant_keywords = ['ai', 'artificial intelligence', 'machine learning', 'ml',
+                                    'automation', 'autonomous', 'robot', 'algorithm', 'predictive',
+                                    'generative', 'llm', 'gpt', 'neural', 'deep learning',
+                                    'computer vision', 'analytics', 'data science']
+
+                # Check if title contains relevant keywords and not already seen
+                if (any(keyword in title_lower for keyword in relevant_keywords)
+                    and entry.title not in seen_titles):
+                    entry.trend_indicator = trend_emoji  # Add trending indicator
+                    entry.content_type = "article"
+                    news_items.append(entry)
+                    seen_titles.add(entry.title)
+        except:
+            continue
+
+    # Add YouTube videos for AI supply chain content
+    try:
+        youtube_queries = [
+            "AI+supply+chain+automation",
+            "machine+learning+logistics",
+            "warehouse+robotics+AI"
+        ]
+
+        for yt_query in youtube_queries[:2]:  # Fetch from 2 video queries
+            # Use YouTube RSS feed (publicly available, no API key needed)
+            yt_url = f"https://www.youtube.com/results?search_query={yt_query}"
+            # Alternative: Use Google News to find YouTube videos
+            search_url = f"https://news.google.com/rss/search?q={yt_query}+site:youtube.com&hl=en-US&gl=US&ceid=US:en"
+
+            feed = feedparser.parse(search_url)
+            for entry in feed.entries[:2]:  # Take 2 videos per query
+                if 'youtube.com' in entry.link and entry.title not in seen_titles:
+                    entry.trend_indicator = "🎥"
+                    entry.content_type = "video"
+                    news_items.append(entry)
+                    seen_titles.add(entry.title)
+    except:
+        pass
+
+    # Sort by published date
+    try:
+        news_items.sort(key=lambda x: x.published_parsed, reverse=True)
+    except:
+        pass
+
+    return news_items[:10]  # Return top 10 most recent (articles + videos)
+
+@st.cache_data(ttl=300)
 def get_disruption_news():
     """Fetch supply chain disruption headlines"""
     try:
@@ -1327,13 +1426,26 @@ def show_dashboard():
     with col2:
         # AI & Tech News
         st.markdown("## 🤖 AI in Supply Chain")
-        st.caption("Automation, ML & logistics tech")
+        st.caption("🔥 Trending: Use cases, research, policies & videos • Updates every 5min")
         news = get_ai_supply_chain_news()
         for item in news[:4]:
             date_str = format_news_date(item)
+            trend_icon = getattr(item, 'trend_indicator', '📰')
+            content_type = getattr(item, 'content_type', 'article')
+
+            # Different styling for videos vs articles
+            if content_type == 'video':
+                type_badge = '<span style="background:#DC2626;color:white;padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-left:6px;">VIDEO</span>'
+            else:
+                type_badge = ''
+
             st.markdown(f"""
 <div style="background:#1F2937;padding:12px;border-radius:8px;margin:8px 0;border-left:3px solid #8B5CF6;">
-    <a href="{item.link}" target="_blank" style="color:#8B5CF6;text-decoration:none;font-weight:500;">{item.title}</a>
+    <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:1.1rem;">{trend_icon}</span>
+        <a href="{item.link}" target="_blank" style="color:#8B5CF6;text-decoration:none;font-weight:500;flex:1;">{item.title}</a>
+        {type_badge}
+    </div>
     <div style="color:#6B7280;font-size:0.75rem;margin-top:4px;">{date_str}</div>
 </div>
             """, unsafe_allow_html=True)
@@ -1395,15 +1507,56 @@ def show_news_page():
             """, unsafe_allow_html=True)
     
     with tab2:
-        news = get_ai_supply_chain_news()
-        for item in news:
+        st.markdown("### 🔥 Trending AI in Supply Chain")
+        st.caption("📊 Updates Every 5 Minutes • Articles, Videos, Research & Policies")
+
+        # Get all news and categorize by time period
+        all_news = get_ai_supply_chain_news()
+        day_news, week_news, month_news = categorize_by_time_period(all_news)
+
+        # Helper function to render news items
+        def render_news_item(item):
             date_str = format_news_date(item)
-            st.markdown(f"""
-<div class="alert-card ai">
-    <a href="{item.link}" target="_blank" style="color:#8B5CF6;text-decoration:none;font-weight:600;font-size:1.1rem;">{item.title}</a>
-    <p style="color:#94A3B8;font-size:0.85rem;margin-top:8px;">{date_str}</p>
-</div>
-            """, unsafe_allow_html=True)
+            trend_icon = getattr(item, 'trend_indicator', '📰')
+            content_type = getattr(item, 'content_type', 'article')
+
+            if content_type == 'video':
+                type_badge = '<span style="background:#DC2626;color:white;padding:3px 8px;border-radius:4px;font-size:0.75rem;margin-left:8px;font-weight:600;">🎥 VIDEO</span>'
+                border_color = "#DC2626"
+            else:
+                type_badge = ''
+                border_color = "#8B5CF6"
+
+            # Condensed HTML to single line to avoid rendering issues
+            return f'<div class="alert-card ai" style="border-left:4px solid {border_color};margin-bottom:12px;"><div style="display:flex;align-items:flex-start;gap:8px;"><span style="font-size:1.3rem;margin-top:2px;">{trend_icon}</span><div style="flex:1;"><a href="{item.link}" target="_blank" style="color:#8B5CF6;text-decoration:none;font-weight:600;font-size:1.05rem;">{item.title}</a>{type_badge}<p style="color:#94A3B8;font-size:0.8rem;margin-top:6px;">{date_str}</p></div></div></div>'
+
+        # Day Trending
+        st.markdown("#### 🔴 Today's Trending")
+        if day_news:
+            for item in day_news[:5]:
+                st.markdown(render_news_item(item), unsafe_allow_html=True)
+        else:
+            st.info("No stories published today yet. Check week or month trending below.")
+
+        st.markdown("---")
+
+        # Week Trending
+        st.markdown("#### 📈 This Week's Trending")
+        if week_news:
+            for item in week_news[:6]:
+                st.markdown(render_news_item(item), unsafe_allow_html=True)
+        else:
+            st.info("No stories from this week. Check month trending below.")
+
+        st.markdown("---")
+
+        # Month Trending
+        st.markdown("#### 📊 This Month's Trending")
+        if month_news:
+            for item in month_news[:6]:
+                st.markdown(render_news_item(item), unsafe_allow_html=True)
+        else:
+            st.info("No stories from this month available.")
     
     with tab3:
         news = get_policy_news()
