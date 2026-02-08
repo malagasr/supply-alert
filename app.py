@@ -376,12 +376,17 @@ def show_dashboard():
             with cols[i]:
                 severity_class = "alert-card" if alert['severity'] == "High" else "alert-card warning"
                 st.markdown(f"""
-<div class="{severity_class}">
-    <h3>{alert['type']}</h3>
-    <p><strong>Location:</strong> {alert['location']}</p>
-    <p><strong>Impact:</strong> {alert['impact']}</p>
-    <span style="background:{'#EF4444' if alert['severity'] == 'High' else '#F59E0B'};color:white;padding:4px 12px;border-radius:12px;font-size:0.8rem;">{alert['severity']}</span>
-</div>
+<a href="https://www.weather.gov/" target="_blank" style="text-decoration:none;color:inherit;">
+    <div class="{severity_class}" style="transition:transform 0.2s;cursor:pointer;">
+        <div style="display:flex;justify-content:space-between;align-items:start;">
+            <h3>{alert['type']}</h3>
+            <span style="background:{'#EF4444' if alert['severity'] == 'High' else '#F59E0B'};color:white;padding:4px 12px;border-radius:100px;font-size:0.75rem;font-weight:600;">{alert['severity']}</span>
+        </div>
+        <p style="color:#CBD5E1;margin-bottom:4px;"><strong>📍 Location:</strong> {alert['location']}</p>
+        <p style="color:#94A3B8;"><strong>⚠️ Impact:</strong> {alert['impact']}</p>
+        <div style="margin-top:10px;font-size:0.8rem;color:#3B82F6;font-weight:500;">View Details →</div>
+    </div>
+</a>
                 """, unsafe_allow_html=True)
     
     # Port Congestion
