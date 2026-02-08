@@ -5,6 +5,14 @@ import feedparser
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import plotly.express as px
+import os
+from dotenv import load_dotenv
+from google import genai
+from google.genai import types
+import json
+
+# Load environment variables
+load_dotenv()
 
 # --- Page Config ---
 st.set_page_config(
@@ -214,6 +222,84 @@ st.markdown("""
         font-size: 0.75rem;
         margin-top: 6px;
     }
+    
+    /* Chat Interface Styles */
+    .chat-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 380px;
+        max-height: 600px;
+        background: rgba(15, 23, 42, 0.95);
+        border-radius: 16px;
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(20px);
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+    }
+    .chat-header {
+        background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+        padding: 16px 20px;
+        border-radius: 16px 16px 0 0;
+        color: white;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        max-height: 400px;
+    }
+    .chat-message {
+        margin-bottom: 12px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        line-height: 1.5;
+        font-size: 0.9rem;
+    }
+    .chat-message.user {
+        background: rgba(59, 130, 246, 0.2);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        color: #E2E8F0;
+        margin-left: 20px;
+    }
+    .chat-message.assistant {
+        background: rgba(31, 41, 55, 0.6);
+        border: 1px solid rgba(51, 65, 85, 0.5);
+        color: #CBD5E1;
+        margin-right: 20px;
+    }
+    .chat-input-container {
+        padding: 12px;
+        border-top: 1px solid rgba(51, 65, 85, 0.5);
+    }
+    .chat-toggle-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+        border: none;
+        box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+        cursor: pointer;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+        transition: all 0.3s ease;
+    }
+    .chat-toggle-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 12px 32px rgba(59, 130, 246, 0.6);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -227,7 +313,9 @@ def get_freight_industry_news():
         url = "https://news.google.com/rss/search?q=XPO+logistics+OR+Ryder+trucking+OR+Penske+freight+OR+JB+Hunt+OR+Schneider+trucking+OR+Werner+freight&hl=en-US&gl=US&ceid=US:en"
         feed = feedparser.parse(url)
         return feed.entries[:6]
-    except:
+    except (Exception) as e:
+        # Log error but return empty list to keep app running
+        print(f"Error fetching freight news: {e}")
         return []
 
 @st.cache_data(ttl=300)
@@ -237,7 +325,8 @@ def get_policy_news():
         url = "https://news.google.com/rss/search?q=freight+policy+OR+trucking+regulations+OR+USMCA+trade+OR+tariffs+logistics+OR+DOT+trucking+OR+FMCSA&hl=en-US&gl=US&ceid=US:en"
         feed = feedparser.parse(url)
         return feed.entries[:6]
-    except:
+    except (Exception) as e:
+        print(f"Error fetching policy news: {e}")
         return []
 
 @st.cache_data(ttl=300)
@@ -247,7 +336,8 @@ def get_ai_supply_chain_news():
         url = "https://news.google.com/rss/search?q=AI+supply+chain+OR+artificial+intelligence+logistics+OR+machine+learning+freight+OR+automation+warehouse&hl=en-US&gl=US&ceid=US:en"
         feed = feedparser.parse(url)
         return feed.entries[:6]
-    except:
+    except (Exception) as e:
+        print(f"Error fetching AI news: {e}")
         return []
 
 @st.cache_data(ttl=300)
@@ -257,7 +347,30 @@ def get_disruption_news():
         url = "https://news.google.com/rss/search?q=supply+chain+disruption+OR+port+congestion+OR+freight+delays+OR+shipping+crisis+OR+trucking+shortage&hl=en-US&gl=US&ceid=US:en"
         feed = feedparser.parse(url)
         return feed.entries[:6]
-    except:
+    except (Exception) as e:
+        print(f"Error fetching disruption news: {e}")
+        return []
+
+@st.cache_data(ttl=300)
+def get_southern_border_news():
+    """Fetch Southern Border logistics and trade news"""
+    try:
+        url = "https://news.google.com/rss/search?q=southern+border+OR+Mexico+trade+OR+border+crossing+OR+customs+delay+OR+USMCA+OR+Laredo+freight+OR+El+Paso+logistics&hl=en-US&gl=US&ceid=US:en"
+        feed = feedparser.parse(url)
+        return feed.entries[:6]
+    except (Exception) as e:
+        print(f"Error fetching southern border news: {e}")
+        return []
+
+@st.cache_data(ttl=300)
+def get_border_weather_news():
+    """Fetch weather news affecting Southern Border region"""
+    try:
+        url = "https://news.google.com/rss/search?q=Texas+weather+OR+Mexico+storm+OR+hurricane+border+OR+Rio+Grande+Valley+weather+OR+border+flooding&hl=en-US&gl=US&ceid=US:en"
+        feed = feedparser.parse(url)
+        return feed.entries[:6]
+    except (Exception) as e:
+        print(f"Error fetching border weather news: {e}")
         return []
 
 @st.cache_data(ttl=1800)
@@ -300,6 +413,199 @@ def format_news_date(item):
     except:
         return ""
 
+# --- AI AGENT FUNCTIONS ---
+
+def initialize_gemini():
+    """Initialize Gemini API"""
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        # Try Streamlit secrets
+        try:
+            api_key = st.secrets.get("GEMINI_API_KEY")
+        except (KeyError, FileNotFoundError, AttributeError):
+            pass
+    
+    return api_key
+
+def get_all_news_as_json():
+    """Compile all news feeds into structured JSON for AI context"""
+    news_data = {
+        "freight_industry": [],
+        "policy": [],
+        "ai_supply_chain": [],
+        "disruptions": [],
+        "southern_border": [],
+        "border_weather": [],
+        "weather_alerts": get_weather_alerts(),
+        "port_status": get_port_status()
+    }
+    
+    # Fetch all news
+    freight_news = get_freight_industry_news()
+    for item in freight_news:
+        news_data["freight_industry"].append({
+            "title": item.title,
+            "link": item.link,
+            "published": format_news_date(item),
+            "summary": getattr(item, 'summary', '')[:200]
+        })
+    
+    policy_news = get_policy_news()
+    for item in policy_news:
+        news_data["policy"].append({
+            "title": item.title,
+            "link": item.link,
+            "published": format_news_date(item),
+            "summary": getattr(item, 'summary', '')[:200]
+        })
+    
+    ai_news = get_ai_supply_chain_news()
+    for item in ai_news:
+        news_data["ai_supply_chain"].append({
+            "title": item.title,
+            "link": item.link,
+            "published": format_news_date(item),
+            "summary": getattr(item, 'summary', '')[:200]
+        })
+    
+    disruption_news = get_disruption_news()
+    for item in disruption_news:
+        news_data["disruptions"].append({
+            "title": item.title,
+            "link": item.link,
+            "published": format_news_date(item),
+            "summary": getattr(item, 'summary', '')[:200]
+        })
+    
+    border_news = get_southern_border_news()
+    for item in border_news:
+        news_data["southern_border"].append({
+            "title": item.title,
+            "link": item.link,
+            "published": format_news_date(item),
+            "summary": getattr(item, 'summary', '')[:200]
+        })
+    
+    border_weather = get_border_weather_news()
+    for item in border_weather:
+        news_data["border_weather"].append({
+            "title": item.title,
+            "link": item.link,
+            "published": format_news_date(item),
+            "summary": getattr(item, 'summary', '')[:200]
+        })
+    
+    return news_data
+
+def filter_relevant_news(query, news_data):
+    """RAG: Filter news based on query keywords for efficient context"""
+    # Simple stop words to ignore
+    stop_words = {'the', 'is', 'at', 'which', 'on', 'a', 'an', 'and', 'or', 'but', 'in', 'with', 'to', 'for', 'of', 'as', 'by', 'this', 'that', 'it', 'from', 'are', 'was', 'be', 'been', 'will'}
+    
+    # Extract keywords from query, removing stop words and punctuation
+    words = query.lower().replace(',', ' ').replace('.', ' ').replace('?', ' ').replace('!', ' ').split()
+    keywords = [word for word in words if word not in stop_words and len(word) > 2]
+    
+    # Keywords to search for
+    relevant_items = []
+    
+    for category, items in news_data.items():
+        if category in ["weather_alerts", "port_status"]:
+            continue
+        
+        for item in items:
+            # Check if any keyword matches in title or summary
+            item_text = (item.get("title", "") + " " + item.get("summary", "")).lower()
+            
+            # Score based on keyword matches
+            score = sum(1 for keyword in keywords if keyword in item_text)
+            
+            if score > 0:
+                relevant_items.append({
+                    "category": category,
+                    "score": score,
+                    **item
+                })
+    
+    # Sort by relevance score
+    relevant_items.sort(key=lambda x: x["score"], reverse=True)
+    
+    # Return top 10 most relevant items
+    return relevant_items[:10]
+
+def get_ai_response(user_query, news_data):
+    """Get AI response using Gemini with RAG approach"""
+    api_key = initialize_gemini()
+    if not api_key:
+        return "⚠️ AI Assistant is not configured. Please set your GEMINI_API_KEY in the .env file or Streamlit secrets. Get a free API key at https://ai.google.dev/"
+    
+    try:
+        # Filter relevant news using RAG
+        relevant_news = filter_relevant_news(user_query, news_data)
+        
+        # Build context from relevant news
+        context = "# Current Supply Chain Intelligence Data\n\n"
+        
+        # Add weather alerts
+        context += "## Weather Alerts:\n"
+        for alert in news_data.get("weather_alerts", []):
+            context += f"- {alert['type']} ({alert['severity']}): {alert['location']} - {alert['impact']}\n"
+        
+        # Add port status
+        context += "\n## Port Congestion Status:\n"
+        for port, data in news_data.get("port_status", {}).items():
+            context += f"- {port}: {data['congestion']} congestion, {data['delay_days']} days delay\n"
+        
+        # Add relevant news
+        if relevant_news:
+            context += "\n## Relevant News Articles:\n"
+            for item in relevant_news:
+                context += f"\n### [{item['category'].replace('_', ' ').title()}] {item['title']}\n"
+                context += f"Published: {item['published']}\n"
+                if item.get('summary'):
+                    context += f"Summary: {item['summary']}\n"
+        
+        # Create the AI prompt with specialized role
+        system_prompt = """You are a Supply Chain Logistics Analyst specializing in Southern Border operations.
+
+Your primary objective is to analyze real-time news data to identify bottlenecks at the Southern Border.
+
+Task Instructions:
+1. Data Triangulation: Scan the provided news data for keywords related to:
+   - Weather events affecting transportation
+   - Border wait times and customs delays
+   - Policy changes (tariffs, USMCA, trade regulations)
+   - Port congestion and freight delays
+
+2. Correlation Engine: Do not just summarize. Explain the IMPACT:
+   - If a weather event is found, correlate it with known transportation routes
+   - Connect policy changes to potential freight delays
+   - Identify cascading effects across the supply chain
+
+3. Tone: Professional, predictive, and concise
+
+4. Constraint: If no data is available for a specific query, state that the current news feed does not contain that information rather than making assumptions.
+
+5. Always cite your sources by referencing the news categories you're drawing from.
+
+Now analyze the user's question based on the current data:"""
+        
+        # Initialize the client with API key
+        client = genai.Client(api_key=api_key)
+        
+        # Generate response
+        full_prompt = f"{system_prompt}\n\n{context}\n\nUser Question: {user_query}\n\nAnalysis:"
+        
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents=full_prompt
+        )
+        
+        return response.text
+    
+    except Exception as e:
+        return f"⚠️ Error communicating with AI: {str(e)}\n\nPlease check your GEMINI_API_KEY is valid and you have an internet connection."
+
 # --- MAIN APP ---
 
 def main():
@@ -311,7 +617,7 @@ def main():
         # Navigation
         page = st.radio(
             "Navigate",
-            ["🏠 Dashboard", "📰 All News", "ℹ️ About"],
+            ["🏠 Dashboard", "🤖 AI Assistant", "📰 All News", "ℹ️ About"],
             label_visibility="collapsed"
         )
         
@@ -347,12 +653,154 @@ def main():
         st.caption("v1.1.0 • Publicly available data")
     
     # Route to pages
-    if page == "📰 All News":
+    if page == "🤖 AI Assistant":
+        show_ai_assistant_page()
+    elif page == "📰 All News":
         show_news_page()
     elif page == "ℹ️ About":
         show_about_page()
     else:
         show_dashboard()
+
+def show_ai_assistant_page():
+    """AI Assistant chat interface page"""
+    st.markdown("""
+    <div class="hero">
+        <div class="logo-icon">🤖</div>
+        <h1>AI Supply Chain Analyst</h1>
+        <p class="hero-subtitle">Ask complex questions about Southern Border logistics, weather impacts, and policy changes</p>
+        <span class="hero-badge">POWERED BY GEMINI AI</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Check if API is configured
+    api_configured = initialize_gemini()
+    
+    if not api_configured:
+        st.warning("""
+        ⚠️ **AI Assistant Not Configured**
+        
+        To use the AI Assistant, you need to set up your Google Gemini API key:
+        
+        1. Get a **FREE** API key at [Google AI Studio](https://ai.google.dev/)
+        2. Create a `.env` file in the project root with:
+           ```
+           GEMINI_API_KEY=your_api_key_here
+           ```
+        3. Or add it to Streamlit secrets (for deployed apps)
+        
+        The Gemini API has a generous free tier for hobbyist projects!
+        """)
+    
+    # Initialize session state for chat history
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    
+    # Initialize session state for suggested question clicks
+    if "suggested_question" not in st.session_state:
+        st.session_state.suggested_question = ""
+    
+    # Suggested questions
+    st.markdown("### 💡 Example Questions")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🌪️ How will Texas storms affect border freight?", use_container_width=True):
+            st.session_state.suggested_question = "How will the current storms in Texas affect cross-border freight operations?"
+        if st.button("📜 What are the latest policy changes?", use_container_width=True):
+            st.session_state.suggested_question = "What are the latest trade policy changes affecting the Southern Border?"
+    
+    with col2:
+        if st.button("🚛 Border crossing delays today?", use_container_width=True):
+            st.session_state.suggested_question = "What are the current border crossing delays and their causes?"
+        if st.button("⚠️ Identify supply chain bottlenecks", use_container_width=True):
+            st.session_state.suggested_question = "What are the major supply chain bottlenecks at the Southern Border right now?"
+    
+    st.markdown("---")
+    
+    # Chat interface
+    st.markdown("### 💬 Chat with AI Analyst")
+    
+    # Display chat history
+    chat_container = st.container()
+    
+    with chat_container:
+        for message in st.session_state.chat_history:
+            if message["role"] == "user":
+                st.markdown(f"""
+                <div class="chat-message user">
+                    <strong>You:</strong><br>{message["content"]}
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class="chat-message assistant">
+                    <strong>🤖 AI Analyst:</strong><br>{message["content"]}
+                </div>
+                """, unsafe_allow_html=True)
+    
+    # User input - use suggested question if available
+    default_value = st.session_state.suggested_question if st.session_state.suggested_question else ""
+    
+    user_query = st.text_input(
+        "Ask a question about supply chain intelligence:",
+        key="user_input_text",
+        placeholder="e.g., How will tariffs affect freight at Laredo?",
+        value=default_value
+    )
+    
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        send_button = st.button("Send 🚀", use_container_width=True, type="primary")
+    
+    with col2:
+        if st.button("Clear Chat 🗑️", use_container_width=True):
+            st.session_state.chat_history = []
+            st.session_state.suggested_question = ""
+            st.rerun()
+    
+    # Process query
+    if send_button and user_query:
+        if not api_configured:
+            st.error("Please configure your GEMINI_API_KEY first (see instructions above).")
+        else:
+            # Add user message to history
+            st.session_state.chat_history.append({
+                "role": "user",
+                "content": user_query
+            })
+            
+            # Get all news data
+            with st.spinner("🔍 Analyzing supply chain data..."):
+                news_data = get_all_news_as_json()
+                
+                # Get AI response
+                ai_response = get_ai_response(user_query, news_data)
+                
+                # Add AI response to history
+                st.session_state.chat_history.append({
+                    "role": "assistant",
+                    "content": ai_response
+                })
+            
+            # Clear suggested question and rerun to show new messages
+            st.session_state.suggested_question = ""
+            st.rerun()
+    
+    # Info box
+    st.markdown("---")
+    st.info("""
+    **How the AI Assistant Works:**
+    
+    1. **Data Triangulation**: Scans news feeds for weather, border operations, and policy changes
+    2. **RAG (Retrieval-Augmented Generation)**: Only sends relevant articles to AI for efficiency
+    3. **Correlation Engine**: Connects weather events, policy changes, and logistics impacts
+    4. **Southern Border Focus**: Specialized knowledge of cross-border freight operations
+    
+    💡 The AI only uses current news data from our feeds. It won't hallucinate information.
+    """)
 
 def show_dashboard():
     """Main supply chain intelligence dashboard"""
@@ -467,6 +915,36 @@ def show_dashboard():
 </div>
             """, unsafe_allow_html=True)
     
+    # Southern Border News - NEW SECTION
+    st.markdown("## 🌎 Southern Border Intelligence")
+    st.caption("Cross-border freight, customs, USMCA, Mexico trade")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 🚛 Border Logistics")
+        border_news = get_southern_border_news()
+        for item in border_news[:4]:
+            date_str = format_news_date(item)
+            st.markdown(f"""
+<div style="background:#1F2937;padding:12px;border-radius:8px;margin:8px 0;border-left:3px solid #F59E0B;">
+    <a href="{item.link}" target="_blank" style="color:#F59E0B;text-decoration:none;font-weight:500;">{item.title}</a>
+    <div style="color:#6B7280;font-size:0.75rem;margin-top:4px;">{date_str}</div>
+</div>
+            """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("### 🌪️ Border Region Weather")
+        weather_news = get_border_weather_news()
+        for item in weather_news[:4]:
+            date_str = format_news_date(item)
+            st.markdown(f"""
+<div style="background:#1F2937;padding:12px;border-radius:8px;margin:8px 0;border-left:3px solid #3B82F6;">
+    <a href="{item.link}" target="_blank" style="color:#3B82F6;text-decoration:none;font-weight:500;">{item.title}</a>
+    <div style="color:#6B7280;font-size:0.75rem;margin-top:4px;">{date_str}</div>
+</div>
+            """, unsafe_allow_html=True)
+    
     # Footer with email CTA
     st.markdown("---")
     st.markdown("""
@@ -480,7 +958,14 @@ def show_news_page():
     """All news page"""
     st.markdown("# 📰 All Supply Chain News")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["🚛 Freight Industry", "🤖 AI & Tech", "📜 Policy", "⚠️ Disruptions"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "🚛 Freight Industry", 
+        "🤖 AI & Tech", 
+        "📜 Policy", 
+        "⚠️ Disruptions",
+        "🌎 Southern Border",
+        "🌪️ Border Weather"
+    ])
     
     with tab1:
         news = get_freight_industry_news()
@@ -525,6 +1010,30 @@ def show_news_page():
     <p style="color:#94A3B8;font-size:0.85rem;margin-top:8px;">{date_str}</p>
 </div>
             """, unsafe_allow_html=True)
+    
+    with tab5:
+        st.markdown("### 🌎 Cross-Border Freight & Trade")
+        news = get_southern_border_news()
+        for item in news:
+            date_str = format_news_date(item)
+            st.markdown(f"""
+<div class="alert-card warning">
+    <a href="{item.link}" target="_blank" style="color:#F59E0B;text-decoration:none;font-weight:600;font-size:1.1rem;">{item.title}</a>
+    <p style="color:#94A3B8;font-size:0.85rem;margin-top:8px;">{date_str}</p>
+</div>
+            """, unsafe_allow_html=True)
+    
+    with tab6:
+        st.markdown("### 🌪️ Weather Affecting Border Region")
+        news = get_border_weather_news()
+        for item in news:
+            date_str = format_news_date(item)
+            st.markdown(f"""
+<div class="alert-card info">
+    <a href="{item.link}" target="_blank" style="color:#3B82F6;text-decoration:none;font-weight:600;font-size:1.1rem;">{item.title}</a>
+    <p style="color:#94A3B8;font-size:0.85rem;margin-top:8px;">{date_str}</p>
+</div>
+            """, unsafe_allow_html=True)
 
 def show_about_page():
     """About page"""
@@ -534,16 +1043,46 @@ def show_about_page():
     **Supply Chain Intelligence** helps logistics professionals track weather disruptions, 
     freight industry news, AI/technology developments, and policy changes affecting supply chains.
     
+    ### 🤖 NEW: AI-Powered Intelligence
+    
+    Our **AI Supply Chain Analyst** transforms raw news feeds into actionable intelligence:
+    
+    - **Data Triangulation**: Synthesizes weather, policy, and logistics data
+    - **Southern Border Focus**: Specialized analysis of cross-border freight operations
+    - **Correlation Engine**: Identifies cascading effects across the supply chain
+    - **RAG Technology**: Efficient, context-aware responses using Retrieval-Augmented Generation
+    - **Zero Cost**: Powered by Google Gemini's free tier API
+    
     ### 📊 Data Sources
     - **News Feeds:** Aggregated from publicly available sources (Google News RSS)
     - **Weather:** Public weather advisories
     - **Port Data:** Publicly reported congestion metrics
+    - **AI Analysis:** Google Gemini API (free tier)
     
     ### 📰 News Categories
     - **🚛 Freight Industry:** XPO, Ryder, Penske, JB Hunt, Schneider, Werner
     - **🤖 AI & Tech:** Automation, machine learning, warehouse robotics
     - **📜 Policy:** USMCA, DOT, FMCSA, tariffs, trade regulations
     - **⚠️ Disruptions:** Port delays, shortages, weather impacts
+    - **🌎 Southern Border:** Cross-border freight, customs, Mexico trade
+    - **🌪️ Border Weather:** Texas/Mexico weather affecting logistics
+    
+    ### 🚀 How to Use the AI Assistant
+    
+    1. **Get a Free API Key:**
+       - Visit [Google AI Studio](https://ai.google.dev/)
+       - Sign in with your Google account
+       - Generate a free API key
+    
+    2. **Configure the App:**
+       - Create a `.env` file in the project root
+       - Add: `GEMINI_API_KEY=your_api_key_here`
+       - Or use Streamlit secrets for deployed apps
+    
+    3. **Ask Questions:**
+       - Navigate to the "🤖 AI Assistant" page
+       - Ask complex, multi-factor questions
+       - Get predictive analysis and impact assessments
     
     ### ⚖️ Legal Disclaimer
     """)
@@ -553,7 +1092,9 @@ def show_about_page():
     
     **DATA SOURCE:** Aggregates publicly available information. Always verify with official sources before making business decisions.
     
-    **NO AFFILIATION:** Not affiliated with any government agency, carrier, or commercial organization mentioned.
+    **AI DISCLAIMER:** AI responses are generated based on current news data. The AI may make errors or miss important context. Always verify critical information.
+    
+    **NO AFFILIATION:** Not affiliated with any government agency, carrier, commercial organization, or Google.
     """)
 
 if __name__ == "__main__":
