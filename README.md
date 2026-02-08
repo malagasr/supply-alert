@@ -1,27 +1,28 @@
-# Border Crossing Buddy 🛃
+# Supply Chain Intelligence Dashboard
 
-**Real-time commercial truck wait times for US-Mexico border crossings**
+**Real-time weather, geopolitical alerts, and disruption tracking for logistics professionals**
 
-Live app: [borderwaitbuddy.com](https://borderwaitbuddy.streamlit.app) *(update with your URL)*
+Live app: TBD
 
 ---
 
 ## Features
 
-- 📊 **Live CBP Data**: Real-time wait times from U.S. Customs & Border Protection
-- 🌤️ **Weather**: Current conditions at each crossing
-- 📰 **Policy News**: Latest freight regulations and border policy updates
-- 📍 **8 Major Crossings**: Focus on high-volume commercial ports
+- 🌪️ **Weather Disruptions**: Hurricane tracking, storm alerts affecting freight routes
+- 🚨 **Geopolitical Alerts**: Port strikes, fuel crises, trade policy changes
+- 📊 **Port Congestion**: Real-time status of major US ports
+- 🛣️ **Route Disruptions**: Road closures, rail strikes, carrier delays
+- 📰 **Supply Chain News**: Latest policy updates and industry alerts
 - 100% Free • No signup required
 
 ---
 
 ## Data Sources
 
-This app uses **free, public APIs**:
-- [CBP Border Wait Times](https://bwt.cbp.gov) - Official wait time data
-- [Open-Meteo](https://open-meteo.com) - Weather forecasts
-- [Google News RSS](https://news.google.com) - News headlines
+This app uses **free, public APIs and data sources**:
+- [Open-Meteo](https://open-meteo.com) - Weather forecasts and hurricane tracking
+- [Google News RSS](https://news.google.com) - Supply chain news and alerts
+- Public freight and logistics data
 
 ---
 
@@ -29,14 +30,14 @@ This app uses **free, public APIs**:
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/border-crossing-buddy.git
-cd border-crossing-buddy
+git clone https://github.com/yourusername/supply-chain-intelligence.git
+cd supply-chain-intelligence
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Run locally
-streamlit run app.py
+streamlit run app_supply_chain.py
 ```
 
 ---
@@ -46,7 +47,7 @@ streamlit run app.py
 1. Fork this repository
 2. Sign up at [streamlit.io](https://streamlit.io/cloud)
 3. Connect your GitHub account
-4. Deploy from `app.py`
+4. Deploy from `app_supply_chain.py`
 
 ---
 
@@ -54,8 +55,9 @@ streamlit run app.py
 
 - **Streamlit**: Web framework
 - **Pandas**: Data manipulation
-- **Plotly**: Charts
+- **Plotly**: Charts and visualizations
 - **Feedparser**: RSS news feeds
+- **Requests**: API calls
 
 ---
 
@@ -73,8 +75,8 @@ MIT License - see [LICENSE](LICENSE) file
 
 ## Disclaimer
 
-This app provides real-time data from CBP for informational purposes only. Wait times are estimates and may vary. Always check official sources before traveling.
+This app provides real-time data from public sources for informational purposes only. Supply Chain Intelligence makes no warranties regarding accuracy or completeness. Always verify with official sources before making business decisions. Not affiliated with any government agency or commercial organization.
 
 ---
 
-Built with ❤️ for the freight community
+Built with ❤️ for the logistics community
