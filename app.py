@@ -489,39 +489,29 @@ def get_ai_supply_chain_news():
         except:
             continue
 
-    # Add YouTube/Video content (Bing Videos RSS is more reliable for 'trending videos')
+    # Add YouTube/Video content (Google News with site:youtube.com works best)
     try:
         video_queries = [
-            "AI supply chain logistics",
-            "warehouse automation robots",
+            "site:youtube.com AI supply chain",
+            "site:youtube.com logistics technology",
+            "site:youtube.com warehouse robots"
         ]
         
         for v_query in video_queries:
-            # Bing Videos RSS
-            bing_url = f"https://www.bing.com/videos/search?q={v_query.replace(' ', '+')}&format=rss"
-            feed = feedparser.parse(bing_url)
+            # Google News RSS for video content
+            url = f"https://news.google.com/rss/search?q={v_query.replace(' ', '+')}&hl=en-US&gl=US&ceid=US:en"
+            feed = feedparser.parse(url)
             
             for entry in feed.entries[:2]:
-                # Bing often doesn't give direct links in 'link', but in 'media_content' or similar
-                # However, feedparser usually handles standard RSS links.
-                # Check for duplicates
+                # Google News links redirect to YouTube, so we trust the query intent
                 if entry.title not in seen_titles:
                     entry.trend_indicator = "🎥"
                     entry.content_type = "video"
-                    # Clean title (Bing adds duration sometimes?)
+                    # Clean title (sometimes has " - YouTube" at end)
+                    if " - YouTube" in entry.title:
+                         entry.title = entry.title.replace(" - YouTube", "")
                     news_items.append(entry)
                     seen_titles.add(entry.title)
-                    
-        # Fallback/Additional: Google News site:youtube.com
-        if len([i for i in news_items if getattr(i, 'content_type', '') == 'video']) < 2:
-             yt_search = "https://news.google.com/rss/search?q=site:youtube.com+supply+chain+AI&hl=en-US&gl=US&ceid=US:en"
-             feed = feedparser.parse(yt_search)
-             for entry in feed.entries[:2]:
-                 if entry.title not in seen_titles:
-                     entry.trend_indicator = "▶️"
-                     entry.content_type = "video"
-                     news_items.append(entry)
-                     seen_titles.add(entry.title)
     except:
         pass
 
@@ -531,7 +521,7 @@ def get_ai_supply_chain_news():
     except:
         pass
 
-    return news_items[:10]  # Return top 10 most recent (articles + videos)
+    return news_items[:12]  # Return top 12 most recent (articles + videos)
 
 @st.cache_data(ttl=300)
 def get_disruption_news():
