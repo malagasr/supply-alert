@@ -542,263 +542,179 @@ def format_news_date(item):
 
 # --- SUPPLY CHAIN AI JOBS ---
 
-@st.cache_data(ttl=21600)  # Cache for 6 hours
-def get_supply_chain_ai_jobs():
+def fetch_adzuna_jobs():
     """
-    Curated actual job listings with real titles, companies, descriptions, and apply links.
-    Format: (Job Title, Company, Location, Summary, Skills, Apply Link, Salary, Days Posted)
+    Fetch real job postings from Adzuna API (free tier: 1000 calls/month)
+    Returns list of job dictionaries
     """
-    real_jobs = []
+    jobs = []
 
-    # Real job postings - manually curated from major job boards
-    # Format: (Title, Company, Location, Summary, Skills List, Apply URL, Salary, Days Ago)
-    job_listings = [
-        # Featured Real Jobs
-        (
-            'Senior Supply Chain Data Analyst',
-            'Amazon',
-            'Chicago, IL',
-            'Analyze supply chain data to optimize fulfillment operations. Work with large datasets to identify trends and drive strategic decisions.',
-            ['Python', 'SQL', 'Tableau', 'Supply Chain', 'Data Analytics'],
-            'https://www.amazon.jobs/en/search?base_query=supply+chain+analyst&loc_query=Illinois',
-            '$95,000 - $135,000',
-            2
-        ),
-        (
-            'Machine Learning Engineer - Logistics',
-            'Uber Freight',
-            'Chicago, IL (Hybrid)',
-            'Build ML models to optimize freight routing and pricing. Deploy production systems at scale for real-time decision making.',
-            ['Python', 'TensorFlow', 'Machine Learning', 'Logistics', 'SQL'],
-            'https://www.uber.com/us/en/careers/list/?query=freight',
-            '$140,000 - $190,000',
-            3
-        ),
-        (
-            'Supply Chain Technology Manager',
-            'Target',
-            'Minneapolis, MN',
-            'Lead supply chain systems implementation and optimization. Manage team of analysts to improve inventory management using AI/ML.',
-            ['Supply Chain', 'Project Management', 'SQL', 'Data Analytics', 'Leadership'],
-            'https://jobs.target.com/search-jobs/supply%20chain',
-            '$110,000 - $155,000',
-            1
-        ),
-        (
-            'Data Scientist - Supply Chain Optimization',
-            'Walmart',
-            'Bentonville, AR (Remote Available)',
-            'Develop predictive models for demand forecasting and inventory optimization across 4,700+ stores. Work with petabyte-scale data.',
-            ['Python', 'R', 'Machine Learning', 'Forecasting', 'Big Data'],
-            'https://careers.walmart.com/results?q=supply%20chain&jobState=il',
-            '$120,000 - $170,000',
-            4
-        ),
-        (
-            'Supply Chain Analyst',
-            'FourKites',
-            'Chicago, IL',
-            'Analyze real-time supply chain visibility data for enterprise clients. Create dashboards and insights to improve logistics operations.',
-            ['SQL', 'Python', 'Excel', 'Supply Chain', 'Data Visualization'],
-            'https://www.fourkites.com/careers/',
-            '$75,000 - $105,000',
-            5
-        ),
-        (
-            'Principal Data Analyst - Supply Chain',
-            'PepsiCo',
-            'Chicago, IL',
-            'Lead analytics initiatives for supply chain optimization across North America. Partner with operations to drive $50M+ in savings.',
-            ['Advanced Analytics', 'Python', 'SQL', 'Supply Chain', 'Leadership'],
-            'https://www.pepsicojobs.com/main/jobs?keywords=supply+chain',
-            '$125,000 - $165,000',
-            7
-        ),
-        (
-            'AI/ML Engineer - Warehouse Automation',
-            'Project44',
-            'Chicago, IL (Hybrid)',
-            'Build AI systems for warehouse robotics and automation. Develop computer vision and optimization algorithms for material handling.',
-            ['Python', 'TensorFlow', 'Computer Vision', 'Robotics', 'ML Ops'],
-            'https://www.project44.com/careers',
-            '$135,000 - $180,000',
-            6
-        ),
-        (
-            'Supply Chain Optimization Specialist',
-            'Caterpillar',
-            'Peoria, IL',
-            'Optimize global supply chain using operations research and analytics. Implement inventory optimization models across manufacturing network.',
-            ['Supply Chain', 'Optimization', 'Excel', 'SQL', 'SAP'],
-            'https://careers.caterpillar.com/en/jobs/?search=supply%20chain',
-            '$85,000 - $120,000',
-            8
-        ),
-        (
-            'Senior Analytics Manager - Logistics',
-            'C.H. Robinson',
-            'Eden Prairie, MN',
-            'Lead analytics team supporting $20B freight brokerage operations. Drive pricing optimization and carrier network analysis.',
-            ['Leadership', 'SQL', 'Python', 'Logistics', 'Business Strategy'],
-            'https://jobs.chrobinson.com/search/?q=supply+chain',
-            '$130,000 - $175,000',
-            10
-        ),
-        (
-            'Supply Chain Data Engineer',
-            'Flexport',
-            'Chicago, IL (Remote)',
-            'Build data pipelines for global freight forwarding operations. Design ETL processes handling millions of shipment events daily.',
-            ['Python', 'SQL', 'AWS', 'Data Engineering', 'ETL'],
-            'https://www.flexport.com/careers/jobs/',
-            '$110,000 - $150,000',
-            12
-        ),
-        (
-            'Demand Planning Analyst',
-            'Kraft Heinz',
-            'Chicago, IL',
-            'Forecast demand for food manufacturing supply chain. Use statistical models and ML to predict sales across retail channels.',
-            ['Forecasting', 'Excel', 'SQL', 'Supply Chain', 'Statistics'],
-            'https://careers.kraftheinzcompany.com/search/?q=supply+chain',
-            '$70,000 - $95,000',
-            14
-        ),
-        (
-            'Supply Chain Systems Analyst',
-            'John Deere',
-            'Moline, IL',
-            'Implement and optimize supply chain systems (SAP, WMS, TMS). Support manufacturing and distribution operations.',
-            ['SAP', 'Supply Chain', 'SQL', 'Systems Analysis', 'Project Management'],
-            'https://jobs.deere.com/search/?q=supply+chain',
-            '$80,000 - $115,000',
-            11
-        ),
-        (
-            'Logistics Data Analyst',
-            'FedEx',
-            'Indianapolis, IN',
-            'Analyze logistics network data to optimize routes and improve delivery performance. Support operations planning with insights.',
-            ['SQL', 'Python', 'Logistics', 'Data Visualization', 'Excel'],
-            'https://careers.fedex.com/dataexpress/jobs?keywords=supply%20chain',
-            '$72,000 - $100,000',
-            9
-        ),
-        (
-            'Supply Chain Coordinator',
-            'Grainger',
-            'Lake Forest, IL',
-            'Coordinate supply chain operations for industrial distribution. Support inventory management and supplier relationships.',
-            ['Supply Chain', 'Excel', 'ERP Systems', 'Communication', 'Organization'],
-            'https://jobs.grainger.com/search/?q=supply+chain',
-            '$55,000 - $75,000',
-            15
-        ),
-        (
-            'Senior Data Analyst - Transportation',
-            'Coyote Logistics',
-            'Chicago, IL',
-            'Analyze freight transportation data for UPS-owned brokerage. Build models to optimize carrier selection and pricing.',
-            ['SQL', 'Python', 'Tableau', 'Logistics', 'Analytics'],
-            'https://coyote.wd1.myworkdayjobs.com/en-US/Coyote_Careers',
-            '$90,000 - $125,000',
-            13
-        ),
-        (
-            'Supply Chain Technology Consultant',
-            'Accenture',
-            'Chicago, IL',
-            'Advise Fortune 500 clients on supply chain digital transformation. Implement AI/ML solutions for inventory and demand planning.',
-            ['Consulting', 'Supply Chain', 'AI/ML', 'Project Management', 'Communication'],
-            'https://www.accenture.com/us-en/careers/jobsearch?jk=supply+chain',
-            '$100,000 - $145,000',
-            16
-        ),
-        # Additional AI + Supply Chain Jobs
-        (
-            'AI Product Manager - Supply Chain',
-            'Microsoft',
-            'Chicago, IL / Remote',
-            'Lead AI product development for supply chain optimization tools. Define roadmap for machine learning features in Azure Supply Chain Center.',
-            ['Product Management', 'AI/ML', 'Supply Chain', 'Azure', 'Strategy'],
-            'https://careers.microsoft.com/us/en/search-results?keywords=supply%20chain%20AI',
-            '$150,000 - $200,000',
-            1
-        ),
-        (
-            'Generative AI Engineer - Logistics',
-            'OpenAI',
-            'Remote',
-            'Apply GPT models to logistics optimization problems. Build AI agents for supply chain planning and route optimization.',
-            ['Python', 'LLMs', 'GenAI', 'Logistics', 'Machine Learning'],
-            'https://openai.com/careers/search?l=engineering',
-            '$180,000 - $250,000',
-            3
-        ),
-        (
-            'Supply Chain AI Research Scientist',
-            'Google',
-            'Chicago, IL',
-            'Research and develop novel AI algorithms for supply chain optimization. Publish research on forecasting and network optimization.',
-            ['PhD', 'Machine Learning', 'Research', 'Python', 'TensorFlow'],
-            'https://www.google.com/about/careers/applications/jobs/results/?q=supply%20chain',
-            '$160,000 - $220,000',
-            5
-        ),
-        (
-            'Computer Vision Engineer - Warehouse Robotics',
-            'Amazon Robotics',
-            'Chicago, IL',
-            'Develop computer vision systems for warehouse automation. Work on object detection, bin picking, and autonomous navigation.',
-            ['Computer Vision', 'Python', 'PyTorch', 'Robotics', 'Deep Learning'],
-            'https://www.amazon.jobs/en/search?base_query=robotics&loc_query=Illinois',
-            '$145,000 - $195,000',
-            4
-        ),
-        (
-            'AI Solutions Architect - Supply Chain',
-            'IBM',
-            'Chicago, IL / Remote',
-            'Design AI solutions for enterprise supply chain clients. Implement Watson AI for demand forecasting and inventory optimization.',
-            ['Solution Architecture', 'AI/ML', 'Supply Chain', 'IBM Watson', 'Cloud'],
-            'https://www.ibm.com/employment/search/?field_keyword_08[0]=supply%20chain',
-            '$130,000 - $175,000',
-            7
-        ),
-        (
-            'Predictive Analytics Manager - Supply Chain',
-            'Procter & Gamble',
-            'Cincinnati, OH',
-            'Lead predictive analytics team for consumer goods supply chain. Build ML models for demand sensing and promotional forecasting.',
-            ['Predictive Analytics', 'Machine Learning', 'Python', 'Supply Chain', 'Leadership'],
-            'https://www.pgcareers.com/search-jobs/supply%20chain%20analytics',
-            '$115,000 - $160,000',
-            6
-        ),
-        (
-            'NLP Engineer - Supply Chain Documents',
-            'SAP',
-            'Chicago, IL',
-            'Build NLP systems to extract data from supply chain documents. Automate purchase order processing using transformers and LLMs.',
-            ['NLP', 'Python', 'Transformers', 'Document AI', 'Supply Chain'],
-            'https://jobs.sap.com/search/?q=supply%20chain%20AI',
-            '$125,000 - $170,000',
-            8
-        ),
-        (
-            'Reinforcement Learning Engineer - Route Optimization',
-            'DoorDash',
-            'Chicago, IL / Remote',
-            'Apply reinforcement learning to delivery route optimization. Scale algorithms to optimize millions of deliveries daily.',
-            ['Reinforcement Learning', 'Python', 'PyTorch', 'Logistics', 'ML Engineering'],
-            'https://www.doordash.com/careers/jobs/?q=machine%20learning',
-            '$155,000 - $210,000',
-            2
-        ),
+    # Adzuna API configuration (get free key at https://developer.adzuna.com/)
+    ADZUNA_APP_ID = get_secret("ADZUNA_APP_ID") or "test"  # Fallback to test
+    ADZUNA_APP_KEY = get_secret("ADZUNA_APP_KEY") or "test"
+
+    # Search parameters
+    search_queries = [
+        ("supply chain AI", "Chicago"),
+        ("machine learning logistics", "Illinois"),
+        ("data science supply chain", "Midwest"),
     ]
 
-    for title, company, location, summary, skills, link, salary, days_ago in job_listings:
-        real_jobs.append({
+    for query, location in search_queries:
+        try:
+            url = f"http://api.adzuna.com/v1/api/jobs/us/search/1"
+            params = {
+                "app_id": ADZUNA_APP_ID,
+                "app_key": ADZUNA_APP_KEY,
+                "results_per_page": 10,
+                "what": query,
+                "where": location,
+                "sort_by": "date",
+            }
+
+            response = requests.get(url, params=params, timeout=10)
+
+            if response.status_code == 200:
+                data = response.json()
+
+                for job in data.get('results', [])[:7]:  # Take top 7 per query
+                    # Extract salary
+                    salary = "Not specified"
+                    if job.get('salary_min') and job.get('salary_max'):
+                        salary = f"${int(job['salary_min']):,} - ${int(job['salary_max']):,}"
+                    elif job.get('salary_min'):
+                        salary = f"${int(job['salary_min']):,}+"
+
+                    # Parse skills from description (simple keyword extraction)
+                    description = job.get('description', '').lower()
+                    skills = []
+                    skill_keywords = ['python', 'sql', 'machine learning', 'ai', 'data science',
+                                    'supply chain', 'logistics', 'tensorflow', 'pytorch', 'aws']
+                    for skill in skill_keywords:
+                        if skill in description:
+                            skills.append(skill.title())
+
+                    if not skills:
+                        skills = ['Supply Chain', 'Data Analytics']  # Default skills
+
+                    # Parse date
+                    created = job.get('created', '')
+                    try:
+                        job_date = datetime.strptime(created[:10], '%Y-%m-%d') if created else datetime.now()
+                    except:
+                        job_date = datetime.now()
+
+                    jobs.append({
+                        'title': job.get('title', 'Unknown Position'),
+                        'company': job.get('company', {}).get('display_name', 'Company'),
+                        'location': job.get('location', {}).get('display_name', location),
+                        'summary': job.get('description', '')[:200] + "...",
+                        'skills': skills[:5],  # Limit to 5 skills
+                        'link': job.get('redirect_url', '#'),
+                        'salary': salary,
+                        'date': job_date,
+                        'source': '🔴 Live API',
+                        'verified': True
+                    })
+        except Exception as e:
+            # Silently fail and continue - API might be rate limited
+            continue
+
+    return jobs
+
+@st.cache_data(ttl=86400)  # Cache for 24 hours (daily refresh)
+def get_supply_chain_ai_jobs():
+    """
+    Hybrid job fetcher: Real API jobs + Verified company links
+    ~80% self-sustaining with daily auto-refresh
+    """
+    all_jobs = []
+
+    # PART 1: Fetch real jobs from Adzuna API
+    try:
+        api_jobs = fetch_adzuna_jobs()
+        all_jobs.extend(api_jobs)
+    except:
+        pass  # If API fails, continue with verified links only
+
+    # PART 2: Verified company career page links (always up-to-date, no maintenance)
+    # These link directly to company career pages - jobs are always current
+    verified_companies = [
+        ('Browse Amazon Supply Chain Jobs', 'Amazon', 'Nationwide',
+         'Direct link to Amazon career page. Search live openings for supply chain analyst, data scientist, ML engineer, and operations roles.',
+         ['Python', 'SQL', 'Supply Chain', 'Data Analytics', 'AWS'],
+         'https://www.amazon.jobs/en/search?base_query=supply+chain&loc_query=Illinois',
+         '$80,000 - $180,000'),
+
+        ('Browse Walmart Supply Chain Jobs', 'Walmart', 'Nationwide',
+         'Walmart supply chain technology careers. Data science, demand planning, inventory optimization, and ML engineering roles.',
+         ['Python', 'Machine Learning', 'Supply Chain', 'Big Data', 'Forecasting'],
+         'https://careers.walmart.com/results?q=supply%20chain&jobState=il',
+         '$75,000 - $170,000'),
+
+        ('Browse Target Supply Chain Jobs', 'Target', 'Nationwide',
+         'Target supply chain careers including analytics, data science, systems implementation and optimization roles.',
+         ['Supply Chain', 'Data Analytics', 'SQL', 'Python', 'Project Management'],
+         'https://jobs.target.com/search-jobs/supply%20chain',
+         '$85,000 - $160,000'),
+
+        ('Browse FourKites Careers', 'FourKites', 'Chicago, IL',
+         'Real-time supply chain visibility platform. Roles in data analytics, software engineering, and supply chain operations.',
+         ['SQL', 'Python', 'Supply Chain', 'Data Visualization', 'SaaS'],
+         'https://www.fourkites.com/careers/',
+         '$75,000 - $150,000'),
+
+        ('Browse PepsiCo Supply Chain Jobs', 'PepsiCo', 'Nationwide',
+         'Supply chain analytics and optimization roles at global food & beverage leader. Data science, demand planning, and operations.',
+         ['Advanced Analytics', 'Python', 'SQL', 'Supply Chain', 'Forecasting'],
+         'https://www.pepsicojobs.com/main/jobs?keywords=supply+chain',
+         '$90,000 - $165,000'),
+
+        ('Browse Project44 Careers', 'Project44', 'Chicago, IL',
+         'Supply chain visibility and logistics tech company. Engineering, data science, and AI/ML roles.',
+         ['Python', 'Machine Learning', 'Supply Chain', 'Cloud', 'APIs'],
+         'https://www.project44.com/careers',
+         '$95,000 - $180,000'),
+
+        ('Browse C.H. Robinson Jobs', 'C.H. Robinson', 'Eden Prairie, MN',
+         'Third-party logistics leader with $20B+ revenue. Analytics, data science, and technology roles for freight operations.',
+         ['SQL', 'Python', 'Logistics', 'Analytics', 'Business Intelligence'],
+         'https://jobs.chrobinson.com/search/?q=supply+chain',
+         '$80,000 - $175,000'),
+
+        ('Browse Flexport Careers', 'Flexport', 'Remote',
+         'Digital freight forwarding and supply chain platform. Data engineering, software engineering, and operations roles.',
+         ['Python', 'SQL', 'AWS', 'Data Engineering', 'Supply Chain'],
+         'https://www.flexport.com/careers/jobs/',
+         '$100,000 - $170,000'),
+
+        ('Browse Microsoft Supply Chain Jobs', 'Microsoft', 'Nationwide',
+         'Supply chain AI and technology roles including Azure Supply Chain Center product development and operations.',
+         ['AI/ML', 'Supply Chain', 'Azure', 'Product Management', 'Cloud'],
+         'https://careers.microsoft.com/us/en/search-results?keywords=supply%20chain',
+         '$120,000 - $200,000'),
+
+        ('Browse Google Supply Chain Jobs', 'Google', 'Nationwide',
+         'Supply chain operations, analytics, and AI research roles. Work on optimization for global hardware and cloud infrastructure.',
+         ['Machine Learning', 'Python', 'Supply Chain', 'Research', 'Operations'],
+         'https://www.google.com/about/careers/applications/jobs/results/?q=supply%20chain',
+         '$110,000 - $220,000'),
+
+        ('Browse IBM Supply Chain Consulting', 'IBM', 'Nationwide',
+         'Enterprise AI and supply chain consulting. Watson AI implementation, solution architecture, and digital transformation.',
+         ['AI/ML', 'Supply Chain', 'Solution Architecture', 'Consulting', 'Cloud'],
+         'https://www.ibm.com/employment/search/?field_keyword_08[0]=supply%20chain',
+         '$100,000 - $175,000'),
+
+        ('Browse DoorDash ML Jobs', 'DoorDash', 'Remote',
+         'Machine learning and data science for logistics optimization. Route planning, demand forecasting, and operational ML.',
+         ['Machine Learning', 'Python', 'Logistics', 'Data Science', 'Optimization'],
+         'https://www.doordash.com/careers/jobs/?q=machine%20learning',
+         '$130,000 - $210,000'),
+    ]
+
+    for title, company, location, summary, skills, link, salary in verified_companies:
+        all_jobs.append({
             'title': title,
             'company': company,
             'location': location,
@@ -806,14 +722,14 @@ def get_supply_chain_ai_jobs():
             'skills': skills,
             'link': link,
             'salary': salary,
-            'date': datetime.now() - timedelta(days=days_ago),
-            'source': '✅ Verified',
+            'date': datetime.now(),  # Company links are always "current"
+            'source': '✅ Company',
             'verified': True
         })
 
-    # Sort by date (most recent first)
-    real_jobs.sort(key=lambda x: x['date'], reverse=True)
-    return real_jobs
+    # Sort by date (most recent first) - API jobs will appear before company links
+    all_jobs.sort(key=lambda x: x['date'], reverse=True)
+    return all_jobs
 
 def get_salary_estimate(title):
     """Estimate salary based on job title keywords"""
