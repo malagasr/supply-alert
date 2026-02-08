@@ -7,7 +7,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 import os
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import json
 
 # Load environment variables
@@ -418,9 +419,8 @@ def initialize_gemini():
             pass
     
     if api_key:
-        genai.configure(api_key=api_key)
-        return True
-    return False
+        return api_key
+    return None
 
 def get_all_news_as_json():
     """Compile all news feeds into structured JSON for AI context"""
@@ -525,7 +525,8 @@ def filter_relevant_news(query, news_data):
 
 def get_ai_response(user_query, news_data):
     """Get AI response using Gemini with RAG approach"""
-    if not initialize_gemini():
+    api_key = initialize_gemini()
+    if not api_key:
         return "⚠️ AI Assistant is not configured. Please set your GEMINI_API_KEY in the .env file or Streamlit secrets. Get a free API key at https://ai.google.dev/"
     
     try:
@@ -579,13 +580,16 @@ Task Instructions:
 
 Now analyze the user's question based on the current data:"""
         
-        # Initialize the model
-        model = genai.GenerativeModel('gemini-pro')
+        # Initialize the client with API key
+        client = genai.Client(api_key=api_key)
         
         # Generate response
         full_prompt = f"{system_prompt}\n\n{context}\n\nUser Question: {user_query}\n\nAnalysis:"
         
-        response = model.generate_content(full_prompt)
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents=full_prompt
+        )
         
         return response.text
     
