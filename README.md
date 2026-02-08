@@ -60,6 +60,8 @@ The AI Supply Chain Analyst uses Google's Gemini API (free tier):
    - Add `GEMINI_API_KEY` to Secrets
    - Format: `GEMINI_API_KEY = "your_api_key_here"`
 
+📖 **For detailed instructions, see [AI_SETUP.md](AI_SETUP.md)**
+
 ---
 
 ## Installation

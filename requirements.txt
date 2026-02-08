@@ -4,5 +4,5 @@ requests
 plotly
 feedparser
 altair
-google-generativeai
+google-genai
 python-dotenv
